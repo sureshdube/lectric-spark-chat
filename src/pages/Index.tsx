@@ -10,10 +10,13 @@ import { useToast } from "@/hooks/use-toast";
 const Index = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [activeTab, setActiveTab] = useState("login");
-  const [loginStep, setLoginStep] = useState<"phone" | "otp">("phone");
+  const [loginStep, setLoginStep] = useState<"details" | "otp">("details");
   const [phoneNumber, setPhoneNumber] = useState("");
+  const [email, setEmail] = useState("");
   const [otp, setOtp] = useState("");
-  const [actualOtp, setActualOtp] = useState("");
+  const [emailOtp, setEmailOtp] = useState("");
+  const [smsOtp, setSmsOtp] = useState("");
+  const [otpSentVia, setOtpSentVia] = useState<"email" | "sms" | "both" | null>(null);
   const { toast } = useToast();
 
   if (!isAuthenticated) {
@@ -50,8 +53,18 @@ const Index = () => {
                   </TabsList>
                   
                   <TabsContent value="login" className="space-y-4 mt-6">
-                    {loginStep === "phone" ? (
+                    {loginStep === "details" ? (
                       <>
+                        <div className="space-y-2">
+                          <Label htmlFor="email">Email Address</Label>
+                          <Input 
+                            id="email" 
+                            type="email"
+                            placeholder="your.email@example.com"
+                            value={email}
+                            onChange={(e) => setEmail(e.target.value)}
+                          />
+                        </div>
                         <div className="space-y-2">
                           <Label htmlFor="phone">Mobile Number</Label>
                           <Input 
@@ -63,30 +76,86 @@ const Index = () => {
                         </div>
                         <Button 
                           className="w-full" 
-                          onClick={() => {
-                            if (!phoneNumber.trim()) {
+                          onClick={async () => {
+                            if (!email.trim() && !phoneNumber.trim()) {
                               toast({
-                                title: "Phone number required",
-                                description: "Please enter your mobile number",
+                                title: "Contact details required",
+                                description: "Please enter either email or mobile number",
                                 variant: "destructive"
                               });
                               return;
                             }
-                            // Generate a random 4-digit OTP for simulation
-                            const generatedOtp = Math.floor(1000 + Math.random() * 9000).toString();
-                            setActualOtp(generatedOtp);
-                            setLoginStep("otp");
-                            toast({
-                              title: "OTP Sent",
-                              description: `Verification code sent to ${phoneNumber}. For testing, use OTP: ${generatedOtp} or 1111`,
-                            });
+
+                            // Simulate OTP sending process
+                            let emailSuccess = false;
+                            let smsSuccess = false;
+                            let generatedEmailOtp = "";
+                            let generatedSmsOtp = "";
+
+                            // First try email if provided
+                            if (email.trim()) {
+                              try {
+                                // Simulate email OTP sending (90% success rate for demo)
+                                emailSuccess = Math.random() > 0.1;
+                                if (emailSuccess) {
+                                  generatedEmailOtp = Math.floor(1000 + Math.random() * 9000).toString();
+                                  setEmailOtp(generatedEmailOtp);
+                                }
+                              } catch (error) {
+                                emailSuccess = false;
+                              }
+                            }
+
+                            // If email failed or not provided, try SMS
+                            if (!emailSuccess && phoneNumber.trim()) {
+                              try {
+                                // Simulate SMS OTP sending (95% success rate for demo)
+                                smsSuccess = Math.random() > 0.05;
+                                if (smsSuccess) {
+                                  generatedSmsOtp = Math.floor(1000 + Math.random() * 9000).toString();
+                                  setSmsOtp(generatedSmsOtp);
+                                }
+                              } catch (error) {
+                                smsSuccess = false;
+                              }
+                            }
+
+                            // Determine what happened and show appropriate message
+                            if (emailSuccess && smsSuccess) {
+                              setOtpSentVia("both");
+                              setLoginStep("otp");
+                              toast({
+                                title: "OTP Sent Successfully",
+                                description: `Email OTP: ${generatedEmailOtp}, SMS OTP: ${generatedSmsOtp}, or use 1111`,
+                              });
+                            } else if (emailSuccess) {
+                              setOtpSentVia("email");
+                              setLoginStep("otp");
+                              toast({
+                                title: "OTP Sent via Email",
+                                description: `Verification code sent to ${email}. OTP: ${generatedEmailOtp} or use 1111`,
+                              });
+                            } else if (smsSuccess) {
+                              setOtpSentVia("sms");
+                              setLoginStep("otp");
+                              toast({
+                                title: "Email Failed - SMS OTP Sent",
+                                description: `Email delivery failed. SMS sent to ${phoneNumber}. OTP: ${generatedSmsOtp} or use 1111`,
+                              });
+                            } else {
+                              toast({
+                                title: "OTP Delivery Failed",
+                                description: "Unable to send OTP via email or SMS. Please try again or contact support.",
+                                variant: "destructive"
+                              });
+                            }
                           }}
-                          disabled={!phoneNumber.trim()}
+                          disabled={!email.trim() && !phoneNumber.trim()}
                         >
                           Send OTP
                         </Button>
                         <p className="text-xs text-muted-foreground text-center">
-                          We'll send you a verification code via SMS or Email
+                          We'll first try to send OTP via email, then SMS if email fails
                         </p>
                       </>
                     ) : (
@@ -96,15 +165,20 @@ const Index = () => {
                             variant="ghost"
                             size="sm"
                             onClick={() => {
-                              setLoginStep("phone");
+                              setLoginStep("details");
                               setOtp("");
+                              setEmailOtp("");
+                              setSmsOtp("");
+                              setOtpSentVia(null);
                             }}
                           >
                             <ArrowLeft className="h-4 w-4" />
                           </Button>
-                          <span className="text-sm text-muted-foreground">
-                            Code sent to {phoneNumber}
-                          </span>
+                          <div className="text-sm text-muted-foreground">
+                            {otpSentVia === "email" && `Code sent to ${email}`}
+                            {otpSentVia === "sms" && `Code sent to ${phoneNumber}`}
+                            {otpSentVia === "both" && `Codes sent to ${email} & ${phoneNumber}`}
+                          </div>
                         </div>
                         <div className="space-y-2">
                           <Label htmlFor="otp">Enter OTP</Label>
@@ -117,6 +191,11 @@ const Index = () => {
                             className="text-center text-lg tracking-widest"
                           />
                         </div>
+                        {otpSentVia === "both" && (
+                          <p className="text-xs text-muted-foreground text-center">
+                            You can use either the email OTP or SMS OTP
+                          </p>
+                        )}
                         <Button 
                           className="w-full" 
                           onClick={() => {
@@ -129,12 +208,23 @@ const Index = () => {
                               return;
                             }
                             
-                            // Accept both actual OTP and 1111 as valid
-                            if (otp === actualOtp || otp === "1111") {
+                            // Accept email OTP, SMS OTP, or 1111 as valid
+                            const isValidOtp = otp === emailOtp || otp === smsOtp || otp === "1111";
+                            
+                            if (isValidOtp) {
                               setIsAuthenticated(true);
+                              let otpSource = "";
+                              if (otp === "1111") {
+                                otpSource = "bypass code";
+                              } else if (otp === emailOtp) {
+                                otpSource = "email";
+                              } else if (otp === smsOtp) {
+                                otpSource = "SMS";
+                              }
+                              
                               toast({
                                 title: "Login Successful",
-                                description: "Welcome to Electric Assist portal!",
+                                description: `Welcome! Authenticated via ${otpSource}`,
                               });
                             } else {
                               toast({
@@ -154,13 +244,44 @@ const Index = () => {
                             variant="link" 
                             size="sm" 
                             className="px-1 h-auto text-xs"
-                            onClick={() => {
-                              const newOtp = Math.floor(1000 + Math.random() * 9000).toString();
-                              setActualOtp(newOtp);
-                              toast({
-                                title: "New OTP Sent",
-                                description: `New code: ${newOtp} or use 1111`,
-                              });
+                            onClick={async () => {
+                              // Resend logic - try email first, then SMS
+                              let emailSuccess = false;
+                              let smsSuccess = false;
+
+                              if (email.trim()) {
+                                emailSuccess = Math.random() > 0.1;
+                                if (emailSuccess) {
+                                  const newEmailOtp = Math.floor(1000 + Math.random() * 9000).toString();
+                                  setEmailOtp(newEmailOtp);
+                                }
+                              }
+
+                              if (!emailSuccess && phoneNumber.trim()) {
+                                smsSuccess = Math.random() > 0.05;
+                                if (smsSuccess) {
+                                  const newSmsOtp = Math.floor(1000 + Math.random() * 9000).toString();
+                                  setSmsOtp(newSmsOtp);
+                                }
+                              }
+
+                              if (emailSuccess) {
+                                toast({
+                                  title: "New OTP Sent via Email",
+                                  description: `New email OTP: ${emailOtp} or use 1111`,
+                                });
+                              } else if (smsSuccess) {
+                                toast({
+                                  title: "New OTP Sent via SMS",
+                                  description: `New SMS OTP: ${smsOtp} or use 1111`,
+                                });
+                              } else {
+                                toast({
+                                  title: "Resend Failed",
+                                  description: "Unable to resend OTP. Please try again.",
+                                  variant: "destructive"
+                                });
+                              }
                             }}
                           >
                             Resend

@@ -112,65 +112,6 @@ const Index = () => {
   const [isUploadingFile, setIsUploadingFile] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // File attachment handlers
-  const handleFileAttachment = useCallback(() => {
-    console.log('File attachment button clicked');
-    if (fileInputRef.current) {
-      fileInputRef.current.click();
-      console.log('File input triggered');
-    } else {
-      console.error('File input ref is null');
-    }
-  }, []);
-
-  const handleFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    console.log('File input change event triggered');
-    const file = e.target.files?.[0];
-    if (!file) {
-      console.log('No file selected');
-      return;
-    }
-
-    console.log('File selected:', file.name, file.size, file.type);
-
-    // Validate file size (max 10MB)
-    if (file.size > 10 * 1024 * 1024) {
-      console.error('File too large:', file.size);
-      toast({
-        title: "File too large",
-        description: "Please choose a file smaller than 10MB",
-        variant: "destructive"
-      });
-      e.target.value = ''; // Reset file input
-      return;
-    }
-
-    // Validate file type
-    const allowedTypes = ['image/', 'application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'text/plain'];
-    const isValidType = allowedTypes.some(type => file.type.startsWith(type) || file.type === type);
-    
-    if (!isValidType) {
-      console.error('Invalid file type:', file.type);
-      toast({
-        title: "Invalid file type",
-        description: "Please choose an image, PDF, DOC, DOCX, or TXT file",
-        variant: "destructive"
-      });
-      e.target.value = ''; // Reset file input
-      return;
-    }
-
-    console.log('File validation passed, sending message with file');
-    setIsUploadingFile(true);
-    
-    // Simulate file processing time
-    setTimeout(() => {
-      sendMessage(file);
-      setIsUploadingFile(false);
-      e.target.value = ''; // Reset file input
-      console.log('File message sent successfully');
-    }, 500);
-  }, []);
 
   if (!isAuthenticated) {
     return (
@@ -643,6 +584,7 @@ const Index = () => {
       })
     };
 
+    setCurrentMessage(''); // Clear the input
     const updatedMessages = [...chatMessages, userMessage];
     setChatMessages(updatedMessages);
 
@@ -736,6 +678,66 @@ const Index = () => {
       description: "Your chat session has been saved to history.",
     });
   };
+
+  // File attachment handlers (placed after sendMessage to avoid hoisting issues)
+  const handleFileAttachment = useCallback(() => {
+    console.log('File attachment button clicked');
+    if (fileInputRef.current) {
+      fileInputRef.current.click();
+      console.log('File input triggered');
+    } else {
+      console.error('File input ref is null');
+    }
+  }, []);
+
+  const handleFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    console.log('File input change event triggered');
+    const file = e.target.files?.[0];
+    if (!file) {
+      console.log('No file selected');
+      return;
+    }
+
+    console.log('File selected:', file.name, file.size, file.type);
+
+    // Validate file size (max 10MB)
+    if (file.size > 10 * 1024 * 1024) {
+      console.error('File too large:', file.size);
+      toast({
+        title: "File too large",
+        description: "Please choose a file smaller than 10MB",
+        variant: "destructive"
+      });
+      e.target.value = ''; // Reset file input
+      return;
+    }
+
+    // Validate file type
+    const allowedTypes = ['image/', 'application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'text/plain'];
+    const isValidType = allowedTypes.some(type => file.type.startsWith(type) || file.type === type);
+    
+    if (!isValidType) {
+      console.error('Invalid file type:', file.type);
+      toast({
+        title: "Invalid file type",
+        description: "Please choose an image, PDF, DOC, DOCX, or TXT file",
+        variant: "destructive"
+      });
+      e.target.value = ''; // Reset file input
+      return;
+    }
+
+    console.log('File validation passed, sending message with file');
+    setIsUploadingFile(true);
+    
+    // Simulate file processing time
+    setTimeout(() => {
+      sendMessage(file);
+      setIsUploadingFile(false);
+      e.target.value = ''; // Reset file input
+      console.log('File message sent successfully');
+    }, 500);
+  }, [sendMessage]); // Add sendMessage as dependency
 
   // Authenticated Dashboard
   if (userType === 'admin') {

@@ -778,14 +778,12 @@ const Index = () => {
               >
                 {currentView === 'dashboard' ? 'Manage Q&A' : 'Dashboard'}
               </Button>
-              {(currentView === 'admin-support' || currentView === 'dashboard') && (
-                <Button 
-                  variant="outline" 
-                  onClick={() => setCurrentView(currentView === 'admin-support' ? 'dashboard' : 'admin-support')}
-                >
-                  {currentView === 'admin-support' ? 'Dashboard' : 'Support Tickets'}
-                </Button>
-              )}
+              <Button 
+                variant="outline" 
+                onClick={() => setCurrentView(currentView === 'admin-support' ? 'dashboard' : 'admin-support')}
+              >
+                {currentView === 'admin-support' ? 'Dashboard' : 'Support Tickets'}
+              </Button>
               <Button 
                 variant="outline" 
                 onClick={() => {

@@ -379,7 +379,8 @@ const Index = () => {
                         }
                         
                         // Simple admin validation - in real app this would be proper authentication
-                        if (adminEmail === "admin@example.com" && adminPassword === "admin") {
+                        if ((adminEmail === "admin@example.com" && adminPassword === "admin") || 
+                            (adminEmail === "suresh1dube@gmail.com" && adminPassword === "test")) {
                           setIsAuthenticated(true);
                           setUserType('admin');
                           toast({
@@ -399,7 +400,7 @@ const Index = () => {
                       Admin Login
                     </Button>
                     <p className="text-xs text-muted-foreground text-center">
-                      Use: admin@example.com / admin
+                      Use: admin@example.com / admin or suresh1dube@gmail.com / test
                     </p>
                   </TabsContent>
                 </Tabs>

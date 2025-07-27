@@ -668,6 +668,14 @@ const Index = () => {
               >
                 {currentView === 'dashboard' ? 'Manage Q&A' : 'Dashboard'}
               </Button>
+              {(currentView === 'admin-support' || currentView === 'dashboard') && (
+                <Button 
+                  variant="outline" 
+                  onClick={() => setCurrentView(currentView === 'admin-support' ? 'dashboard' : 'admin-support')}
+                >
+                  {currentView === 'admin-support' ? 'Dashboard' : 'Support Tickets'}
+                </Button>
+              )}
               <Button 
                 variant="outline" 
                 onClick={() => {
@@ -707,10 +715,24 @@ const Index = () => {
                     <div className="text-3xl font-bold text-primary">1,234</div>
                   </CardHeader>
                 </Card>
-                <Card>
+                <Card 
+                  className="cursor-pointer hover:shadow-lg transition-all duration-200 hover:scale-105 border-2 hover:border-primary/50"
+                  onClick={() => setCurrentView('admin-support')}
+                >
                   <CardHeader className="pb-2">
                     <CardTitle className="text-lg">Support Tickets</CardTitle>
-                    <div className="text-3xl font-bold text-primary">56</div>
+                    <div className="text-3xl font-bold text-primary">{supportTickets.length}</div>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="mt-2"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setCurrentView('admin-support');
+                      }}
+                    >
+                      View All Tickets
+                    </Button>
                   </CardHeader>
                 </Card>
                 <Card>
@@ -720,6 +742,83 @@ const Index = () => {
                   </CardHeader>
                 </Card>
               </div>
+            </>
+          ) : currentView === 'admin-support' ? (
+            <>
+              {/* Admin Support Tickets View */}
+              <Card className="mb-8">
+                <CardHeader>
+                  <CardTitle className="text-2xl">Customer Support Tickets</CardTitle>
+                  <CardDescription>
+                    View and manage all customer support tickets - latest first
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {supportTickets.length === 0 ? (
+                    <div className="text-center text-muted-foreground py-12">
+                      <Headphones className="h-16 w-16 mx-auto mb-4 opacity-30" />
+                      <h3 className="text-lg font-medium mb-2">No Support Tickets</h3>
+                      <p className="text-sm">No customer support tickets have been submitted yet.</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-4 max-h-[600px] overflow-y-auto">
+                      {supportTickets.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime()).map((ticket) => (
+                        <Card key={ticket.id} className="p-4">
+                          <div className="flex justify-between items-start mb-3">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-3 mb-2">
+                                <h4 className="font-semibold">Ticket #{ticket.id}</h4>
+                                <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                  ticket.status === 'pending' 
+                                    ? 'bg-yellow-100 text-yellow-800' 
+                                    : 'bg-green-100 text-green-800'
+                                }`}>
+                                  {ticket.status.charAt(0).toUpperCase() + ticket.status.slice(1)}
+                                </span>
+                              </div>
+                              <p className="text-sm text-muted-foreground mb-2">
+                                Submitted on {ticket.timestamp.toLocaleDateString()} at {ticket.timestamp.toLocaleTimeString()}
+                              </p>
+                            </div>
+                            {ticket.status === 'pending' && (
+                              <Button 
+                                size="sm" 
+                                onClick={() => {
+                                  setSupportTickets(prevTickets => 
+                                    prevTickets.map(t => 
+                                      t.id === ticket.id 
+                                        ? { ...t, status: 'resolved' as const, response: 'Thank you for contacting us. We have reviewed your query and will follow up with you directly via email with detailed assistance.' }
+                                        : t
+                                    )
+                                  );
+                                  toast({
+                                    title: "Ticket Resolved",
+                                    description: `Ticket #${ticket.id} has been marked as resolved`,
+                                  });
+                                }}
+                              >
+                                Mark Resolved
+                              </Button>
+                            )}
+                          </div>
+                          
+                          <div className="bg-muted/30 rounded-lg p-3 mb-3">
+                            <p className="text-sm font-medium mb-1">Customer Query:</p>
+                            <p className="text-sm">{ticket.query}</p>
+                          </div>
+                          
+                          {ticket.response && (
+                            <div className="bg-primary/10 rounded-lg p-3">
+                              <p className="text-sm font-medium mb-1 text-primary">Admin Response:</p>
+                              <p className="text-sm">{ticket.response}</p>
+                            </div>
+                          )}
+                        </Card>
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
             </>
           ) : (
             <>
@@ -1157,7 +1256,7 @@ const Index = () => {
                 </div>
               ) : (
                 <div className="space-y-4">
-                  {supportTickets.map((ticket) => (
+                  {supportTickets.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime()).map((ticket) => (
                     <Card key={ticket.id} className="p-4">
                       <div className="flex justify-between items-start mb-3">
                         <div className="flex-1">

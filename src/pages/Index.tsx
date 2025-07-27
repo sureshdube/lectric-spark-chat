@@ -73,7 +73,7 @@ const Index = () => {
 
   // Chat support state
   const [showChat, setShowChat] = useState(false);
-  const [chatMessages, setChatMessages] = useState<Array<{id: string, message: string, sender: 'user' | 'bot', timestamp: Date, isQuerySubmission?: boolean}>>([]);
+  const [chatMessages, setChatMessages] = useState<Array<{id: string, message: string, sender: 'user' | 'bot', timestamp: Date, isQuerySubmission?: boolean, file?: {name: string, url: string, type: string}}>>([]);
   const [currentMessage, setCurrentMessage] = useState("");
   const [showQuerySubmission, setShowQuerySubmission] = useState(false);
   const [queryText, setQueryText] = useState("");
@@ -562,14 +562,21 @@ const Index = () => {
     return null;
   };
 
-  const sendMessage = () => {
-    if (!currentMessage.trim()) return;
+  const sendMessage = (file?: File) => {
+    if (!currentMessage.trim() && !file) return;
 
     const userMessage = {
       id: Math.random().toString(36).substr(2, 9),
       message: currentMessage,
       sender: 'user' as const,
-      timestamp: new Date()
+      timestamp: new Date(),
+      ...(file && {
+        file: {
+          name: file.name,
+          url: URL.createObjectURL(file),
+          type: file.type
+        }
+      })
     };
 
     const updatedMessages = [...chatMessages, userMessage];
@@ -579,9 +586,19 @@ const Index = () => {
     const matchingAnswer = findMatchingAnswer(currentMessage);
     
     setTimeout(() => {
+      let responseMessage = matchingAnswer || "I couldn't find a specific answer to your question in our FAQ.";
+      
+      if (file) {
+        responseMessage += " I can see you've shared a file with us. For technical issues that require file analysis, our support team will review your attachment and provide personalized assistance.";
+      }
+      
+      if (!matchingAnswer) {
+        responseMessage += " Would you like to submit this query to our support team for a personalized response?";
+      }
+
       const botResponse = {
         id: Math.random().toString(36).substr(2, 9),
-        message: matchingAnswer || "I couldn't find a specific answer to your question in our FAQ. Would you like to submit this query to our support team for a personalized response?",
+        message: responseMessage,
         sender: 'bot' as const,
         timestamp: new Date()
       };
@@ -1127,6 +1144,25 @@ const Index = () => {
                             : 'bg-muted'
                         } ${message.isQuerySubmission ? 'border-2 border-accent' : ''}`}
                       >
+                        {message.file && (
+                          <div className="mb-2 p-2 bg-white/10 rounded border">
+                            {message.file.type.startsWith('image/') ? (
+                              <div className="space-y-2">
+                                <img 
+                                  src={message.file.url} 
+                                  alt={message.file.name}
+                                  className="max-w-full max-h-48 rounded"
+                                />
+                                <p className="text-xs opacity-70">📎 {message.file.name}</p>
+                              </div>
+                            ) : (
+                              <div className="flex items-center gap-2">
+                                <span className="text-lg">📎</span>
+                                <span className="text-xs">{message.file.name}</span>
+                              </div>
+                            )}
+                          </div>
+                        )}
                         <p className="text-sm">{message.message}</p>
                         <p className="text-xs opacity-70 mt-1">
                           {message.timestamp.toLocaleTimeString()}
@@ -1171,13 +1207,42 @@ const Index = () => {
                     placeholder="Type your question..."
                     value={currentMessage}
                     onChange={(e) => setCurrentMessage(e.target.value)}
-                    onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
+                    onKeyPress={(e) => e.key === 'Enter' && !e.shiftKey && sendMessage()}
                     className="flex-1"
                   />
-                  <Button onClick={sendMessage} disabled={!currentMessage.trim()}>
+                  <label className="cursor-pointer">
+                    <input 
+                      type="file" 
+                      className="hidden"
+                      accept="image/*,.pdf,.doc,.docx,.txt"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          // Check file size (max 10MB)
+                          if (file.size > 10 * 1024 * 1024) {
+                            toast({
+                              title: "File too large",
+                              description: "Please choose a file smaller than 10MB",
+                              variant: "destructive"
+                            });
+                            return;
+                          }
+                          sendMessage(file);
+                          e.target.value = ''; // Reset file input
+                        }
+                      }}
+                    />
+                    <Button variant="outline" size="icon" type="button">
+                      📎
+                    </Button>
+                  </label>
+                  <Button onClick={() => sendMessage()} disabled={!currentMessage.trim()}>
                     Send
                   </Button>
                 </div>
+                <p className="text-xs text-muted-foreground mt-2">
+                  Attach images, documents (PDF, DOC, TXT) up to 10MB
+                </p>
               </div>
             </Card>
           </div>

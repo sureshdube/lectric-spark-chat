@@ -567,7 +567,7 @@ const Index = () => {
 
     const userMessage = {
       id: Math.random().toString(36).substr(2, 9),
-      message: currentMessage,
+      message: currentMessage || (file ? `Shared file: ${file.name}` : ""),
       sender: 'user' as const,
       timestamp: new Date(),
       ...(file && {
@@ -582,18 +582,24 @@ const Index = () => {
     const updatedMessages = [...chatMessages, userMessage];
     setChatMessages(updatedMessages);
 
-    // Try to find matching answer
-    const matchingAnswer = findMatchingAnswer(currentMessage);
+    // Try to find matching answer (only if there's a text message)
+    const matchingAnswer = currentMessage.trim() ? findMatchingAnswer(currentMessage) : null;
     
     setTimeout(() => {
-      let responseMessage = matchingAnswer || "I couldn't find a specific answer to your question in our FAQ.";
+      let responseMessage = "";
       
-      if (file) {
-        responseMessage += " I can see you've shared a file with us. For technical issues that require file analysis, our support team will review your attachment and provide personalized assistance.";
-      }
-      
-      if (!matchingAnswer) {
-        responseMessage += " Would you like to submit this query to our support team for a personalized response?";
+      if (file && !currentMessage.trim()) {
+        responseMessage = "I can see you've shared a file with us. For technical issues that require file analysis, our support team will review your attachment and provide personalized assistance. Would you like to submit this to our support team?";
+      } else {
+        responseMessage = matchingAnswer || "I couldn't find a specific answer to your question in our FAQ.";
+        
+        if (file) {
+          responseMessage += " I can see you've shared a file with us. For technical issues that require file analysis, our support team will review your attachment and provide personalized assistance.";
+        }
+        
+        if (!matchingAnswer) {
+          responseMessage += " Would you like to submit this query to our support team for a personalized response?";
+        }
       }
 
       const botResponse = {
@@ -606,8 +612,8 @@ const Index = () => {
       const finalMessages = [...updatedMessages, botResponse];
       setChatMessages(finalMessages);
 
-      // If no matching answer found, show option to submit query
-      if (!matchingAnswer) {
+      // If no matching answer found or file without text, show option to submit query
+      if (!matchingAnswer || (file && !currentMessage.trim())) {
         setShowQuerySubmission(true);
       }
     }, 1000);

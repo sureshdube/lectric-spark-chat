@@ -4,11 +4,17 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { MessageCircle, Package, Settings, User, Zap, Shield, Headphones } from "lucide-react";
+import { MessageCircle, Package, Settings, User, Zap, Shield, Headphones, ArrowLeft } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 
 const Index = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [activeTab, setActiveTab] = useState("login");
+  const [loginStep, setLoginStep] = useState<"phone" | "otp">("phone");
+  const [phoneNumber, setPhoneNumber] = useState("");
+  const [otp, setOtp] = useState("");
+  const [actualOtp, setActualOtp] = useState("");
+  const { toast } = useToast();
 
   if (!isAuthenticated) {
     return (
@@ -44,19 +50,124 @@ const Index = () => {
                   </TabsList>
                   
                   <TabsContent value="login" className="space-y-4 mt-6">
-                    <div className="space-y-2">
-                      <Label htmlFor="phone">Mobile Number</Label>
-                      <Input id="phone" placeholder="+1 (555) 123-4567" />
-                    </div>
-                    <Button 
-                      className="w-full" 
-                      onClick={() => setIsAuthenticated(true)}
-                    >
-                      Send OTP
-                    </Button>
-                    <p className="text-xs text-muted-foreground text-center">
-                      We'll send you a verification code via SMS
-                    </p>
+                    {loginStep === "phone" ? (
+                      <>
+                        <div className="space-y-2">
+                          <Label htmlFor="phone">Mobile Number</Label>
+                          <Input 
+                            id="phone" 
+                            placeholder="+1 (555) 123-4567"
+                            value={phoneNumber}
+                            onChange={(e) => setPhoneNumber(e.target.value)}
+                          />
+                        </div>
+                        <Button 
+                          className="w-full" 
+                          onClick={() => {
+                            if (!phoneNumber.trim()) {
+                              toast({
+                                title: "Phone number required",
+                                description: "Please enter your mobile number",
+                                variant: "destructive"
+                              });
+                              return;
+                            }
+                            // Generate a random 4-digit OTP for simulation
+                            const generatedOtp = Math.floor(1000 + Math.random() * 9000).toString();
+                            setActualOtp(generatedOtp);
+                            setLoginStep("otp");
+                            toast({
+                              title: "OTP Sent",
+                              description: `Verification code sent to ${phoneNumber}. For testing, use OTP: ${generatedOtp} or 1111`,
+                            });
+                          }}
+                          disabled={!phoneNumber.trim()}
+                        >
+                          Send OTP
+                        </Button>
+                        <p className="text-xs text-muted-foreground text-center">
+                          We'll send you a verification code via SMS or Email
+                        </p>
+                      </>
+                    ) : (
+                      <>
+                        <div className="flex items-center gap-2 mb-4">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              setLoginStep("phone");
+                              setOtp("");
+                            }}
+                          >
+                            <ArrowLeft className="h-4 w-4" />
+                          </Button>
+                          <span className="text-sm text-muted-foreground">
+                            Code sent to {phoneNumber}
+                          </span>
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="otp">Enter OTP</Label>
+                          <Input 
+                            id="otp" 
+                            placeholder="Enter 4-digit code"
+                            value={otp}
+                            onChange={(e) => setOtp(e.target.value)}
+                            maxLength={4}
+                            className="text-center text-lg tracking-widest"
+                          />
+                        </div>
+                        <Button 
+                          className="w-full" 
+                          onClick={() => {
+                            if (!otp.trim()) {
+                              toast({
+                                title: "OTP required",
+                                description: "Please enter the verification code",
+                                variant: "destructive"
+                              });
+                              return;
+                            }
+                            
+                            // Accept both actual OTP and 1111 as valid
+                            if (otp === actualOtp || otp === "1111") {
+                              setIsAuthenticated(true);
+                              toast({
+                                title: "Login Successful",
+                                description: "Welcome to Electric Assist portal!",
+                              });
+                            } else {
+                              toast({
+                                title: "Invalid OTP",
+                                description: "Please enter the correct verification code",
+                                variant: "destructive"
+                              });
+                            }
+                          }}
+                          disabled={!otp.trim()}
+                        >
+                          Verify & Login
+                        </Button>
+                        <p className="text-xs text-muted-foreground text-center">
+                          Didn't receive the code? 
+                          <Button 
+                            variant="link" 
+                            size="sm" 
+                            className="px-1 h-auto text-xs"
+                            onClick={() => {
+                              const newOtp = Math.floor(1000 + Math.random() * 9000).toString();
+                              setActualOtp(newOtp);
+                              toast({
+                                title: "New OTP Sent",
+                                description: `New code: ${newOtp} or use 1111`,
+                              });
+                            }}
+                          >
+                            Resend
+                          </Button>
+                        </p>
+                      </>
+                    )}
                   </TabsContent>
                   
                   <TabsContent value="admin" className="space-y-4 mt-6">

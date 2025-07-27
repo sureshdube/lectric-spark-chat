@@ -71,6 +71,14 @@ const Index = () => {
   const [newAnswer, setNewAnswer] = useState('');
   const [editingQA, setEditingQA] = useState<{id: number, question: string, answer: string} | null>(null);
 
+  // Chat support state
+  const [showChat, setShowChat] = useState(false);
+  const [chatMessages, setChatMessages] = useState<Array<{id: string, message: string, sender: 'user' | 'bot', timestamp: Date, isQuerySubmission?: boolean}>>([]);
+  const [currentMessage, setCurrentMessage] = useState("");
+  const [chatHistory, setChatHistory] = useState<Array<{id: string, messages: any[], timestamp: Date}>>([]);
+  const [showQuerySubmission, setShowQuerySubmission] = useState(false);
+  const [queryText, setQueryText] = useState("");
+
   if (!isAuthenticated) {
     return (
       <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-primary/10 via-background to-accent/10">
@@ -501,6 +509,108 @@ const Index = () => {
     });
   };
 
+  // Chat Functions
+  const findMatchingAnswer = (userMessage: string): string | null => {
+    const message = userMessage.toLowerCase();
+    
+    // Simple keyword matching for predefined Q&As
+    for (const qa of qaList) {
+      const questionWords = qa.question.toLowerCase().split(' ');
+      const answerWords = qa.answer.toLowerCase().split(' ');
+      
+      // Check if user message contains key words from question or answer
+      const hasMatchingWords = questionWords.some(word => 
+        word.length > 3 && message.includes(word)
+      ) || answerWords.some(word => 
+        word.length > 4 && message.includes(word)
+      );
+      
+      if (hasMatchingWords) {
+        return qa.answer;
+      }
+    }
+    
+    return null;
+  };
+
+  const sendMessage = () => {
+    if (!currentMessage.trim()) return;
+
+    const userMessage = {
+      id: Math.random().toString(36).substr(2, 9),
+      message: currentMessage,
+      sender: 'user' as const,
+      timestamp: new Date()
+    };
+
+    const updatedMessages = [...chatMessages, userMessage];
+    setChatMessages(updatedMessages);
+
+    // Try to find matching answer
+    const matchingAnswer = findMatchingAnswer(currentMessage);
+    
+    setTimeout(() => {
+      const botResponse = {
+        id: Math.random().toString(36).substr(2, 9),
+        message: matchingAnswer || "I couldn't find a specific answer to your question in our FAQ. Would you like to submit this query to our support team for a personalized response?",
+        sender: 'bot' as const,
+        timestamp: new Date()
+      };
+
+      const finalMessages = [...updatedMessages, botResponse];
+      setChatMessages(finalMessages);
+
+      // If no matching answer found, show option to submit query
+      if (!matchingAnswer) {
+        setShowQuerySubmission(true);
+      }
+    }, 1000);
+
+    setCurrentMessage("");
+  };
+
+  const submitQuery = () => {
+    if (!queryText.trim()) return;
+
+    // Save query submission
+    const querySubmission = {
+      id: Math.random().toString(36).substr(2, 9),
+      message: `Query submitted: ${queryText}`,
+      sender: 'user' as const,
+      timestamp: new Date(),
+      isQuerySubmission: true
+    };
+
+    setChatMessages([...chatMessages, querySubmission]);
+    
+    toast({
+      title: "Query Submitted",
+      description: "Your query has been submitted to our support team. We'll get back to you soon!",
+    });
+
+    setQueryText("");
+    setShowQuerySubmission(false);
+  };
+
+  const saveChatHistory = () => {
+    if (chatMessages.length === 0) return;
+
+    const chatSession = {
+      id: Math.random().toString(36).substr(2, 9),
+      messages: chatMessages,
+      timestamp: new Date()
+    };
+
+    setChatHistory([...chatHistory, chatSession]);
+    setChatMessages([]);
+    setShowChat(false);
+    
+    toast({
+      title: "Chat Saved",
+      description: "Your chat session has been saved to history.",
+    });
+  };
+
   // Authenticated Dashboard
   if (userType === 'admin') {
     return (
@@ -688,7 +798,7 @@ const Index = () => {
       title: 'Support Chat',
       description: 'Get instant help with your scooter',
       icon: MessageCircle,
-      action: () => alert('Opening chat support...'),
+      action: () => setCurrentView('chat'),
     },
     {
       title: 'My Orders',
@@ -784,7 +894,10 @@ const Index = () => {
               </CardHeader>
               <CardContent>
                 <div className="grid md:grid-cols-3 gap-4">
-                  <Button className="h-auto py-4 flex-col gap-2">
+                  <Button 
+                    className="h-auto py-4 flex-col gap-2"
+                    onClick={() => setCurrentView('chat')}
+                  >
                     <MessageCircle className="h-5 w-5" />
                     Start Chat Support
                   </Button>
@@ -819,6 +932,136 @@ const Index = () => {
               </div>
             </CardContent>
           </Card>
+        ) : currentView === 'chat' ? (
+          <div className="max-w-4xl mx-auto">
+            {/* Chat Interface */}
+            <Card className="h-[600px] flex flex-col">
+              <CardHeader className="border-b">
+                <div className="flex justify-between items-center">
+                  <div>
+                    <CardTitle className="text-xl">Support Chat</CardTitle>
+                    <CardDescription>
+                      Ask questions about your electric scooter. We'll search our FAQ for quick answers.
+                    </CardDescription>
+                  </div>
+                  {chatMessages.length > 0 && (
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={saveChatHistory}
+                    >
+                      Save & End Chat
+                    </Button>
+                  )}
+                </div>
+              </CardHeader>
+              
+              {/* Chat Messages */}
+              <CardContent className="flex-1 overflow-y-auto p-4 space-y-4">
+                {chatMessages.length === 0 ? (
+                  <div className="text-center text-muted-foreground py-8">
+                    <MessageCircle className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                    <p>Start a conversation by asking a question about your electric scooter!</p>
+                    <p className="text-sm mt-2">Try asking: "How long does the battery last?" or "What is the maximum speed?"</p>
+                  </div>
+                ) : (
+                  chatMessages.map((message) => (
+                    <div 
+                      key={message.id} 
+                      className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}
+                    >
+                      <div 
+                        className={`max-w-[80%] rounded-lg px-4 py-2 ${
+                          message.sender === 'user' 
+                            ? 'bg-primary text-primary-foreground' 
+                            : 'bg-muted'
+                        } ${message.isQuerySubmission ? 'border-2 border-accent' : ''}`}
+                      >
+                        <p className="text-sm">{message.message}</p>
+                        <p className="text-xs opacity-70 mt-1">
+                          {message.timestamp.toLocaleTimeString()}
+                        </p>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </CardContent>
+              
+              {/* Query Submission Dialog */}
+              {showQuerySubmission && (
+                <div className="border-t p-4 bg-accent/10">
+                  <div className="space-y-3">
+                    <p className="text-sm font-medium">Submit your query to our support team:</p>
+                    <Input
+                      placeholder="Describe your issue in detail..."
+                      value={queryText}
+                      onChange={(e) => setQueryText(e.target.value)}
+                      onKeyPress={(e) => e.key === 'Enter' && submitQuery()}
+                    />
+                    <div className="flex gap-2">
+                      <Button size="sm" onClick={submitQuery} disabled={!queryText.trim()}>
+                        Submit Query
+                      </Button>
+                      <Button 
+                        size="sm" 
+                        variant="outline" 
+                        onClick={() => setShowQuerySubmission(false)}
+                      >
+                        Continue Chat
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              )}
+              
+              {/* Message Input */}
+              <div className="border-t p-4">
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="Type your question..."
+                    value={currentMessage}
+                    onChange={(e) => setCurrentMessage(e.target.value)}
+                    onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
+                    className="flex-1"
+                  />
+                  <Button onClick={sendMessage} disabled={!currentMessage.trim()}>
+                    Send
+                  </Button>
+                </div>
+              </div>
+            </Card>
+            
+            {/* Chat History */}
+            {chatHistory.length > 0 && (
+              <Card className="mt-6">
+                <CardHeader>
+                  <CardTitle className="text-lg">Chat History</CardTitle>
+                  <CardDescription>
+                    Your previous conversations ({chatHistory.length} sessions)
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    {chatHistory.slice(-3).map((session) => (
+                      <Card key={session.id} className="p-3">
+                        <div className="flex justify-between items-center">
+                          <span className="text-sm font-medium">
+                            Session from {session.timestamp.toLocaleString()}
+                          </span>
+                          <span className="text-xs text-muted-foreground">
+                            {session.messages.length} messages
+                          </span>
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Last message: {session.messages[session.messages.length - 1]?.message.substring(0, 50)}...
+                        </p>
+                      </Card>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+          </div>
         ) : null}
       </div>
     </div>

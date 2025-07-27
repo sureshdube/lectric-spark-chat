@@ -9,6 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 
 const Index = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [userType, setUserType] = useState<'customer' | 'admin' | null>(null);
   const [activeTab, setActiveTab] = useState("login");
   const [loginStep, setLoginStep] = useState<"details" | "otp">("details");
   const [phoneNumber, setPhoneNumber] = useState("");
@@ -17,7 +18,58 @@ const Index = () => {
   const [emailOtp, setEmailOtp] = useState("");
   const [smsOtp, setSmsOtp] = useState("");
   const [otpSentVia, setOtpSentVia] = useState<"email" | "sms" | "both" | null>(null);
+  const [adminEmail, setAdminEmail] = useState('');
+  const [adminPassword, setAdminPassword] = useState('');
+  const [currentView, setCurrentView] = useState('dashboard');
   const { toast } = useToast();
+
+  // Predefined Q&A data
+  const [qaList, setQaList] = useState([
+    {
+      id: 1,
+      question: "How long does the battery last?",
+      answer: "Our electric scooters typically have a battery life of 25-40 km on a single charge, depending on the model, rider weight, terrain, and riding conditions."
+    },
+    {
+      id: 2,
+      question: "How long does it take to charge the battery?",
+      answer: "Most of our electric scooter batteries take 4-6 hours for a complete charge from empty. Some models support fast charging which can reach 80% in 2-3 hours."
+    },
+    {
+      id: 3,
+      question: "What is the maximum speed?",
+      answer: "Our scooters have different speed settings. Economy models reach 25 km/h, while performance models can reach up to 45 km/h. Speed is also limited by local regulations."
+    },
+    {
+      id: 4,
+      question: "Is it waterproof?",
+      answer: "Our scooters have IP54 water resistance rating, which means they can handle light rain and splashes but should not be submerged in water or used in heavy rain."
+    },
+    {
+      id: 5,
+      question: "What is the warranty period?",
+      answer: "We provide a 2-year warranty on the frame and electrical components, and 1-year warranty on the battery. This covers manufacturing defects and normal wear."
+    },
+    {
+      id: 6,
+      question: "How do I maintain my scooter?",
+      answer: "Regular maintenance includes checking tire pressure monthly, cleaning the scooter weekly, charging the battery regularly, and having professional service every 6 months."
+    },
+    {
+      id: 7,
+      question: "Can I ride in the rain?",
+      answer: "Light rain is okay due to IP54 rating, but avoid heavy rain and puddles. Always dry the scooter after wet weather and check electrical connections."
+    },
+    {
+      id: 8,
+      question: "What is the weight limit?",
+      answer: "Most of our scooters support riders up to 100-120 kg. Check your specific model specifications for exact weight limits to ensure optimal performance."
+    }
+  ]);
+
+  const [newQuestion, setNewQuestion] = useState('');
+  const [newAnswer, setNewAnswer] = useState('');
+  const [editingQA, setEditingQA] = useState<{id: number, question: string, answer: string} | null>(null);
 
   if (!isAuthenticated) {
     return (
@@ -212,8 +264,9 @@ const Index = () => {
                             const isValidOtp = otp === emailOtp || otp === smsOtp || otp === "1111";
                             
                             if (isValidOtp) {
-                              setIsAuthenticated(true);
-                              let otpSource = "";
+                               setIsAuthenticated(true);
+                               setUserType('customer');
+                               let otpSource = "";
                               if (otp === "1111") {
                                 otpSource = "bypass code";
                               } else if (otp === emailOtp) {
@@ -293,20 +346,61 @@ const Index = () => {
                   
                   <TabsContent value="admin" className="space-y-4 mt-6">
                     <div className="space-y-2">
-                      <Label htmlFor="email">Email</Label>
-                      <Input id="email" type="email" placeholder="admin@example.com" />
+                      <Label htmlFor="admin-email">Email</Label>
+                      <Input 
+                        id="admin-email" 
+                        type="email" 
+                        placeholder="admin@example.com"
+                        value={adminEmail}
+                        onChange={(e) => setAdminEmail(e.target.value)}
+                      />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="password">Password</Label>
-                      <Input id="password" type="password" placeholder="••••••••" />
+                      <Label htmlFor="admin-password">Password</Label>
+                      <Input 
+                        id="admin-password" 
+                        type="password" 
+                        placeholder="••••••••"
+                        value={adminPassword}
+                        onChange={(e) => setAdminPassword(e.target.value)}
+                      />
                     </div>
                     <Button 
                       className="w-full" 
                       variant="secondary"
-                      onClick={() => setIsAuthenticated(true)}
+                      onClick={() => {
+                        if (!adminEmail.trim() || !adminPassword.trim()) {
+                          toast({
+                            title: "Credentials required",
+                            description: "Please enter both email and password",
+                            variant: "destructive"
+                          });
+                          return;
+                        }
+                        
+                        // Simple admin validation - in real app this would be proper authentication
+                        if (adminEmail === "admin@example.com" && adminPassword === "admin") {
+                          setIsAuthenticated(true);
+                          setUserType('admin');
+                          toast({
+                            title: "Admin Login Successful",
+                            description: "Welcome to the admin dashboard",
+                          });
+                        } else {
+                          toast({
+                            title: "Invalid Credentials",
+                            description: "Please check your email and password",
+                            variant: "destructive"
+                          });
+                        }
+                      }}
+                      disabled={!adminEmail.trim() || !adminPassword.trim()}
                     >
                       Admin Login
                     </Button>
+                    <p className="text-xs text-muted-foreground text-center">
+                      Use: admin@example.com / admin
+                    </p>
                   </TabsContent>
                 </Tabs>
               </CardContent>
@@ -363,8 +457,232 @@ const Index = () => {
     );
   }
 
+  // Q&A Management Functions
+  const addQA = () => {
+    if (!newQuestion.trim() || !newAnswer.trim()) {
+      toast({
+        title: "Missing Information",
+        description: "Please fill in both question and answer",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    const newQA = {
+      id: Math.max(...qaList.map(qa => qa.id)) + 1,
+      question: newQuestion.trim(),
+      answer: newAnswer.trim()
+    };
+
+    setQaList([...qaList, newQA]);
+    setNewQuestion('');
+    setNewAnswer('');
+    toast({
+      title: "Q&A Added",
+      description: "New question and answer added successfully",
+    });
+  };
+
+  const updateQA = (id: number, question: string, answer: string) => {
+    setQaList(qaList.map(qa => qa.id === id ? { ...qa, question, answer } : qa));
+    setEditingQA(null);
+    toast({
+      title: "Q&A Updated",
+      description: "Question and answer updated successfully",
+    });
+  };
+
+  const deleteQA = (id: number) => {
+    setQaList(qaList.filter(qa => qa.id !== id));
+    toast({
+      title: "Q&A Deleted",
+      description: "Question and answer deleted successfully",
+    });
+  };
+
   // Authenticated Dashboard
-  const features = [
+  if (userType === 'admin') {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-accent/5 p-4">
+        <div className="max-w-6xl mx-auto">
+          {/* Header */}
+          <div className="flex justify-between items-center mb-8">
+            <div className="flex items-center gap-2">
+              <Zap className="h-8 w-8 text-primary" />
+              <h1 className="text-2xl font-bold text-primary">Electric Assist Admin</h1>
+            </div>
+            <div className="flex gap-2">
+              <Button 
+                variant="outline" 
+                onClick={() => setCurrentView(currentView === 'dashboard' ? 'qa-management' : 'dashboard')}
+              >
+                {currentView === 'dashboard' ? 'Manage Q&A' : 'Dashboard'}
+              </Button>
+              <Button 
+                variant="outline" 
+                onClick={() => {
+                  setIsAuthenticated(false);
+                  setUserType(null);
+                  setCurrentView('dashboard');
+                }}
+              >
+                Logout
+              </Button>
+            </div>
+          </div>
+
+          {currentView === 'dashboard' ? (
+            <>
+              {/* Admin Welcome */}
+              <Card className="mb-8 bg-gradient-to-r from-primary/10 to-accent/10 border-primary/20">
+                <CardHeader>
+                  <CardTitle className="text-2xl">Admin Dashboard</CardTitle>
+                  <CardDescription className="text-lg">
+                    Manage customer support and Q&A database
+                  </CardDescription>
+                </CardHeader>
+              </Card>
+
+              {/* Admin Stats */}
+              <div className="grid md:grid-cols-4 gap-6 mb-8">
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-lg">Total Q&A</CardTitle>
+                    <div className="text-3xl font-bold text-primary">{qaList.length}</div>
+                  </CardHeader>
+                </Card>
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-lg">Active Users</CardTitle>
+                    <div className="text-3xl font-bold text-primary">1,234</div>
+                  </CardHeader>
+                </Card>
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-lg">Support Tickets</CardTitle>
+                    <div className="text-3xl font-bold text-primary">56</div>
+                  </CardHeader>
+                </Card>
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-lg">Response Rate</CardTitle>
+                    <div className="text-3xl font-bold text-primary">98%</div>
+                  </CardHeader>
+                </Card>
+              </div>
+            </>
+          ) : (
+            <>
+              {/* Q&A Management */}
+              <Card className="mb-8">
+                <CardHeader>
+                  <CardTitle className="text-2xl">Q&A Management</CardTitle>
+                  <CardDescription>
+                    Add, edit, and manage frequently asked questions
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  {/* Add New Q&A */}
+                  <div className="border rounded-lg p-4 space-y-4">
+                    <h3 className="text-lg font-semibold">Add New Q&A</h3>
+                    <div className="space-y-2">
+                      <Label htmlFor="new-question">Question</Label>
+                      <Input
+                        id="new-question"
+                        placeholder="Enter the question..."
+                        value={newQuestion}
+                        onChange={(e) => setNewQuestion(e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="new-answer">Answer</Label>
+                      <Input
+                        id="new-answer"
+                        placeholder="Enter the answer..."
+                        value={newAnswer}
+                        onChange={(e) => setNewAnswer(e.target.value)}
+                      />
+                    </div>
+                    <Button onClick={addQA} disabled={!newQuestion.trim() || !newAnswer.trim()}>
+                      Add Q&A
+                    </Button>
+                  </div>
+
+                  {/* Q&A List */}
+                  <div className="space-y-4">
+                    <h3 className="text-lg font-semibold">Existing Q&A ({qaList.length})</h3>
+                    {qaList.map((qa) => (
+                      <Card key={qa.id} className="p-4">
+                        {editingQA?.id === qa.id ? (
+                          <div className="space-y-4">
+                            <div className="space-y-2">
+                              <Label>Question</Label>
+                              <Input
+                                value={editingQA.question}
+                                onChange={(e) => setEditingQA({...editingQA, question: e.target.value})}
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label>Answer</Label>
+                              <Input
+                                value={editingQA.answer}
+                                onChange={(e) => setEditingQA({...editingQA, answer: e.target.value})}
+                              />
+                            </div>
+                            <div className="flex gap-2">
+                              <Button 
+                                size="sm"
+                                onClick={() => updateQA(editingQA.id, editingQA.question, editingQA.answer)}
+                              >
+                                Save
+                              </Button>
+                              <Button 
+                                size="sm" 
+                                variant="outline"
+                                onClick={() => setEditingQA(null)}
+                              >
+                                Cancel
+                              </Button>
+                            </div>
+                          </div>
+                        ) : (
+                          <div>
+                            <div className="flex justify-between items-start mb-2">
+                              <h4 className="font-semibold text-primary">Q: {qa.question}</h4>
+                              <div className="flex gap-2">
+                                <Button 
+                                  size="sm" 
+                                  variant="outline"
+                                  onClick={() => setEditingQA(qa)}
+                                >
+                                  Edit
+                                </Button>
+                                <Button 
+                                  size="sm" 
+                                  variant="destructive"
+                                  onClick={() => deleteQA(qa.id)}
+                                >
+                                  Delete
+                                </Button>
+                              </div>
+                            </div>
+                            <p className="text-muted-foreground">A: {qa.answer}</p>
+                          </div>
+                        )}
+                      </Card>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            </>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // Customer Dashboard
+  const customerFeatures = [
     {
       title: 'Support Chat',
       description: 'Get instant help with your scooter',
@@ -384,10 +702,10 @@ const Index = () => {
       action: () => alert('Opening profile settings...'),
     },
     {
-      title: 'Admin Dashboard',
-      description: 'Manage users, FAQs, and support tickets',
+      title: 'FAQ',
+      description: 'Browse frequently asked questions',
       icon: Settings,
-      action: () => alert('Opening admin dashboard...'),
+      action: () => setCurrentView(currentView === 'dashboard' ? 'faq' : 'dashboard'),
     },
   ];
 
@@ -400,70 +718,107 @@ const Index = () => {
             <Zap className="h-8 w-8 text-primary" />
             <h1 className="text-2xl font-bold text-primary">Electric Assist</h1>
           </div>
-          <Button 
-            variant="outline" 
-            onClick={() => setIsAuthenticated(false)}
-          >
-            Logout
-          </Button>
+          <div className="flex gap-2">
+            {currentView !== 'dashboard' && (
+              <Button 
+                variant="outline" 
+                onClick={() => setCurrentView('dashboard')}
+              >
+                Back to Dashboard
+              </Button>
+            )}
+            <Button 
+              variant="outline" 
+              onClick={() => {
+                setIsAuthenticated(false);
+                setUserType(null);
+                setCurrentView('dashboard');
+              }}
+            >
+              Logout
+            </Button>
+          </div>
         </div>
 
-        {/* Welcome Section */}
-        <Card className="mb-8 bg-gradient-to-r from-primary/10 to-accent/10 border-primary/20">
-          <CardHeader>
-            <CardTitle className="text-2xl">Welcome Back!</CardTitle>
-            <CardDescription className="text-lg">
-              How can we assist you with your electric scooter today?
-            </CardDescription>
-          </CardHeader>
-        </Card>
-
-        {/* Features Grid */}
-        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {features.map((feature, index) => (
-            <Card 
-              key={index} 
-              className="hover:shadow-lg transition-all duration-200 cursor-pointer hover:scale-105 border-2 hover:border-primary/50"
-              onClick={feature.action}
-            >
-              <CardHeader className="text-center pb-4">
-                <div className="w-16 h-16 mx-auto bg-primary/10 rounded-full flex items-center justify-center mb-4">
-                  <feature.icon className="h-8 w-8 text-primary" />
-                </div>
-                <CardTitle className="text-lg">{feature.title}</CardTitle>
-                <CardDescription className="text-sm">
-                  {feature.description}
+        {currentView === 'dashboard' ? (
+          <>
+            {/* Welcome Section */}
+            <Card className="mb-8 bg-gradient-to-r from-primary/10 to-accent/10 border-primary/20">
+              <CardHeader>
+                <CardTitle className="text-2xl">Welcome Back!</CardTitle>
+                <CardDescription className="text-lg">
+                  How can we assist you with your electric scooter today?
                 </CardDescription>
               </CardHeader>
             </Card>
-          ))}
-        </div>
 
-        {/* Quick Actions */}
-        <Card className="mt-8">
-          <CardHeader>
-            <CardTitle>Quick Actions</CardTitle>
-            <CardDescription>
-              Frequently used support options
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid md:grid-cols-3 gap-4">
-              <Button className="h-auto py-4 flex-col gap-2">
-                <MessageCircle className="h-5 w-5" />
-                Start Chat Support
-              </Button>
-              <Button variant="secondary" className="h-auto py-4 flex-col gap-2">
-                <Package className="h-5 w-5" />
-                Check Order Status
-              </Button>
-              <Button variant="outline" className="h-auto py-4 flex-col gap-2">
-                <User className="h-5 w-5" />
-                Update Profile
-              </Button>
+            {/* Features Grid */}
+            <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+              {customerFeatures.map((feature, index) => (
+                <Card 
+                  key={index} 
+                  className="hover:shadow-lg transition-all duration-200 cursor-pointer hover:scale-105 border-2 hover:border-primary/50"
+                  onClick={feature.action}
+                >
+                  <CardHeader className="text-center pb-4">
+                    <div className="w-16 h-16 mx-auto bg-primary/10 rounded-full flex items-center justify-center mb-4">
+                      <feature.icon className="h-8 w-8 text-primary" />
+                    </div>
+                    <CardTitle className="text-lg">{feature.title}</CardTitle>
+                    <CardDescription className="text-sm">
+                      {feature.description}
+                    </CardDescription>
+                  </CardHeader>
+                </Card>
+              ))}
             </div>
-          </CardContent>
-        </Card>
+
+            {/* Quick Actions */}
+            <Card className="mt-8">
+              <CardHeader>
+                <CardTitle>Quick Actions</CardTitle>
+                <CardDescription>
+                  Frequently used support options
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid md:grid-cols-3 gap-4">
+                  <Button className="h-auto py-4 flex-col gap-2">
+                    <MessageCircle className="h-5 w-5" />
+                    Start Chat Support
+                  </Button>
+                  <Button variant="secondary" className="h-auto py-4 flex-col gap-2">
+                    <Package className="h-5 w-5" />
+                    Check Order Status
+                  </Button>
+                  <Button variant="outline" className="h-auto py-4 flex-col gap-2">
+                    <User className="h-5 w-5" />
+                    Update Profile
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </>
+        ) : currentView === 'faq' ? (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-2xl">Frequently Asked Questions</CardTitle>
+              <CardDescription>
+                Find answers to common questions about electric scooters
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {qaList.map((qa) => (
+                  <Card key={qa.id} className="p-4">
+                    <h4 className="font-semibold text-primary mb-2">Q: {qa.question}</h4>
+                    <p className="text-muted-foreground">A: {qa.answer}</p>
+                  </Card>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        ) : null}
       </div>
     </div>
   );

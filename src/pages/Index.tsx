@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { MessageCircle, Package, Settings, User, Zap, Shield, Headphones, ArrowLeft, Send } from "lucide-react";
+import { MessageCircle, Package, Settings, User, Zap, Shield, Headphones, ArrowLeft, Send, Paperclip } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 const Index = () => {
@@ -75,6 +75,7 @@ const Index = () => {
   const [showChat, setShowChat] = useState(false);
   const [chatMessages, setChatMessages] = useState<Array<{id: string, message: string, sender: 'user' | 'bot', timestamp: Date, isQuerySubmission?: boolean, file?: {name: string, url: string, type: string}}>>([]);
   const [currentMessage, setCurrentMessage] = useState("");
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [showQuerySubmission, setShowQuerySubmission] = useState(false);
   const [queryText, setQueryText] = useState("");
   
@@ -563,6 +564,17 @@ const Index = () => {
     }
     
     return null;
+  };
+
+  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      sendMessage(file);
+    }
+    // Reset the file input
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
   };
 
   const sendMessage = (file?: File) => {
@@ -1221,6 +1233,24 @@ const Index = () => {
                     onKeyPress={(e) => e.key === 'Enter' && !e.shiftKey && sendMessage()}
                     className="flex-1"
                   />
+                  
+                  {/* File Upload */}
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    onChange={handleFileUpload}
+                    className="hidden"
+                    accept="image/*,.pdf,.doc,.docx,.txt"
+                  />
+                  
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => fileInputRef.current?.click()}
+                    title="Attach file"
+                  >
+                    <Paperclip className="h-4 w-4" />
+                  </Button>
                   
                   <Button 
                     onClick={() => sendMessage()} 

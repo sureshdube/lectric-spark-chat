@@ -1,10 +1,10 @@
-import { useState } from "react";
+import { useState, useRef, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { MessageCircle, Package, Settings, User, Zap, Shield, Headphones, ArrowLeft } from "lucide-react";
+import { MessageCircle, Package, Settings, User, Zap, Shield, Headphones, ArrowLeft, Paperclip, Upload, Loader2, Send } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 const Index = () => {
@@ -107,6 +107,70 @@ const Index = () => {
       timestamp: new Date(Date.now() - 24 * 60 * 60 * 1000) // 1 day ago
     }
   ]);
+
+  // File upload state
+  const [isUploadingFile, setIsUploadingFile] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // File attachment handlers
+  const handleFileAttachment = useCallback(() => {
+    console.log('File attachment button clicked');
+    if (fileInputRef.current) {
+      fileInputRef.current.click();
+      console.log('File input triggered');
+    } else {
+      console.error('File input ref is null');
+    }
+  }, []);
+
+  const handleFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    console.log('File input change event triggered');
+    const file = e.target.files?.[0];
+    if (!file) {
+      console.log('No file selected');
+      return;
+    }
+
+    console.log('File selected:', file.name, file.size, file.type);
+
+    // Validate file size (max 10MB)
+    if (file.size > 10 * 1024 * 1024) {
+      console.error('File too large:', file.size);
+      toast({
+        title: "File too large",
+        description: "Please choose a file smaller than 10MB",
+        variant: "destructive"
+      });
+      e.target.value = ''; // Reset file input
+      return;
+    }
+
+    // Validate file type
+    const allowedTypes = ['image/', 'application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'text/plain'];
+    const isValidType = allowedTypes.some(type => file.type.startsWith(type) || file.type === type);
+    
+    if (!isValidType) {
+      console.error('Invalid file type:', file.type);
+      toast({
+        title: "Invalid file type",
+        description: "Please choose an image, PDF, DOC, DOCX, or TXT file",
+        variant: "destructive"
+      });
+      e.target.value = ''; // Reset file input
+      return;
+    }
+
+    console.log('File validation passed, sending message with file');
+    setIsUploadingFile(true);
+    
+    // Simulate file processing time
+    setTimeout(() => {
+      sendMessage(file);
+      setIsUploadingFile(false);
+      e.target.value = ''; // Reset file input
+      console.log('File message sent successfully');
+    }, 500);
+  }, []);
 
   if (!isAuthenticated) {
     return (
@@ -1215,40 +1279,76 @@ const Index = () => {
                     onChange={(e) => setCurrentMessage(e.target.value)}
                     onKeyPress={(e) => e.key === 'Enter' && !e.shiftKey && sendMessage()}
                     className="flex-1"
+                    disabled={isUploadingFile}
                   />
-                  <label className="cursor-pointer">
-                    <input 
-                      type="file" 
-                      className="hidden"
-                      accept="image/*,.pdf,.doc,.docx,.txt"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (file) {
-                          // Check file size (max 10MB)
-                          if (file.size > 10 * 1024 * 1024) {
-                            toast({
-                              title: "File too large",
-                              description: "Please choose a file smaller than 10MB",
-                              variant: "destructive"
-                            });
-                            return;
-                          }
-                          sendMessage(file);
-                          e.target.value = ''; // Reset file input
-                        }
-                      }}
-                    />
-                    <Button variant="outline" size="icon" type="button">
-                      📎
-                    </Button>
-                  </label>
-                  <Button onClick={() => sendMessage()} disabled={!currentMessage.trim()}>
+                  
+                  {/* Hidden File Input */}
+                  <input 
+                    ref={fileInputRef}
+                    type="file" 
+                    className="hidden"
+                    accept="image/*,.pdf,.doc,.docx,.txt"
+                    onChange={handleFileChange}
+                  />
+                  
+                  {/* File Attachment Button */}
+                  <Button 
+                    variant="outline" 
+                    size="icon" 
+                    type="button"
+                    onClick={handleFileAttachment}
+                    disabled={isUploadingFile}
+                    className="relative"
+                  >
+                    {isUploadingFile ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Paperclip className="h-4 w-4" />
+                    )}
+                  </Button>
+                  
+                  <Button 
+                    onClick={() => sendMessage()} 
+                    disabled={!currentMessage.trim() || isUploadingFile}
+                  >
+                    {isUploadingFile ? (
+                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    ) : (
+                      <Send className="h-4 w-4 mr-2" />
+                    )}
                     Send
                   </Button>
                 </div>
-                <p className="text-xs text-muted-foreground mt-2">
-                  Attach images, documents (PDF, DOC, TXT) up to 10MB
-                </p>
+                
+                {/* File Upload Zone - Alternative method */}
+                <div 
+                  className="mt-3 p-3 border-2 border-dashed border-muted-foreground/20 rounded-lg text-center cursor-pointer hover:border-primary/50 transition-colors"
+                  onClick={handleFileAttachment}
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    e.currentTarget.classList.add('border-primary');
+                  }}
+                  onDragLeave={(e) => {
+                    e.preventDefault();
+                    e.currentTarget.classList.remove('border-primary');
+                  }}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    e.currentTarget.classList.remove('border-primary');
+                    const file = e.dataTransfer.files[0];
+                    if (file && fileInputRef.current) {
+                      const dt = new DataTransfer();
+                      dt.items.add(file);
+                      fileInputRef.current.files = dt.files;
+                      handleFileChange({ target: { files: dt.files, value: '' } } as any);
+                    }
+                  }}
+                >
+                  <Upload className="h-4 w-4 mx-auto mb-1 text-muted-foreground" />
+                  <p className="text-xs text-muted-foreground">
+                    Click or drag files here • Images, PDF, DOC, TXT • Max 10MB
+                  </p>
+                </div>
               </div>
             </Card>
           </div>

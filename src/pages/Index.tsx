@@ -75,9 +75,38 @@ const Index = () => {
   const [showChat, setShowChat] = useState(false);
   const [chatMessages, setChatMessages] = useState<Array<{id: string, message: string, sender: 'user' | 'bot', timestamp: Date, isQuerySubmission?: boolean}>>([]);
   const [currentMessage, setCurrentMessage] = useState("");
-  const [chatHistory, setChatHistory] = useState<Array<{id: string, messages: any[], timestamp: Date}>>([]);
   const [showQuerySubmission, setShowQuerySubmission] = useState(false);
   const [queryText, setQueryText] = useState("");
+  
+  // Support tickets state  
+  const [supportTickets, setSupportTickets] = useState<Array<{id: string, query: string, status: 'pending' | 'resolved', timestamp: Date, response?: string}>>([
+    // Sample data for testing
+    {
+      id: "sample1",
+      query: "My scooter is making a strange noise when I accelerate. What could be the issue?",
+      status: 'resolved',
+      timestamp: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000), // 2 days ago
+      response: "This could be due to loose bolts or wear in the motor bearings. Please bring your scooter to our service center for a free inspection within your warranty period."
+    },
+    {
+      id: "sample2", 
+      query: "Can I upgrade my scooter's battery to a higher capacity one?",
+      status: 'pending',
+      timestamp: new Date(Date.now() - 6 * 60 * 60 * 1000), // 6 hours ago
+    }
+  ]);
+
+  // Chat history with sample data for testing
+  const [chatHistory, setChatHistory] = useState<Array<{id: string, messages: any[], timestamp: Date}>>([
+    {
+      id: "sample-chat1",
+      messages: [
+        {id: "1", message: "How long does the battery last?", sender: "user", timestamp: new Date()},
+        {id: "2", message: "Our electric scooters typically have a battery life of 25-40 km on a single charge, depending on the model, rider weight, terrain, and riding conditions.", sender: "bot", timestamp: new Date()}
+      ],
+      timestamp: new Date(Date.now() - 24 * 60 * 60 * 1000) // 1 day ago
+    }
+  ]);
 
   if (!isAuthenticated) {
     return (
@@ -572,7 +601,17 @@ const Index = () => {
   const submitQuery = () => {
     if (!queryText.trim()) return;
 
-    // Save query submission
+    // Create support ticket
+    const newTicket = {
+      id: Math.random().toString(36).substr(2, 9),
+      query: queryText,
+      status: 'pending' as const,
+      timestamp: new Date()
+    };
+
+    setSupportTickets([...supportTickets, newTicket]);
+
+    // Save query submission in chat
     const querySubmission = {
       id: Math.random().toString(36).substr(2, 9),
       message: `Query submitted: ${queryText}`,
@@ -807,6 +846,18 @@ const Index = () => {
       action: () => alert('Opening order tracking...'),
     },
     {
+      title: 'Chat History',
+      description: 'View your previous conversations',
+      icon: MessageCircle,
+      action: () => setCurrentView('chat-history'),
+    },
+    {
+      title: 'Support Tickets',
+      description: 'View your submitted support tickets',
+      icon: Headphones,
+      action: () => setCurrentView('support-tickets'),
+    },
+    {
       title: 'Profile Settings',
       description: 'Manage your account and preferences',
       icon: User,
@@ -1030,38 +1081,125 @@ const Index = () => {
                 </div>
               </div>
             </Card>
-            
-            {/* Chat History */}
-            {chatHistory.length > 0 && (
-              <Card className="mt-6">
-                <CardHeader>
-                  <CardTitle className="text-lg">Chat History</CardTitle>
-                  <CardDescription>
-                    Your previous conversations ({chatHistory.length} sessions)
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    {chatHistory.slice(-3).map((session) => (
-                      <Card key={session.id} className="p-3">
-                        <div className="flex justify-between items-center">
-                          <span className="text-sm font-medium">
-                            Session from {session.timestamp.toLocaleString()}
-                          </span>
-                          <span className="text-xs text-muted-foreground">
-                            {session.messages.length} messages
-                          </span>
-                        </div>
-                        <p className="text-xs text-muted-foreground mt-1">
-                          Last message: {session.messages[session.messages.length - 1]?.message.substring(0, 50)}...
-                        </p>
-                      </Card>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            )}
           </div>
+        ) : currentView === 'chat-history' ? (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-2xl">Chat History</CardTitle>
+              <CardDescription>
+                View your previous chat conversations and support interactions
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {chatHistory.length === 0 ? (
+                <div className="text-center text-muted-foreground py-12">
+                  <MessageCircle className="h-16 w-16 mx-auto mb-4 opacity-30" />
+                  <h3 className="text-lg font-medium mb-2">No Chat History</h3>
+                  <p className="text-sm">Start a conversation in the support chat to see your history here.</p>
+                  <Button 
+                    className="mt-4" 
+                    onClick={() => setCurrentView('chat')}
+                  >
+                    Start New Chat
+                  </Button>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {chatHistory.map((session) => (
+                    <Card key={session.id} className="p-4">
+                      <div className="flex justify-between items-center mb-3">
+                        <h4 className="font-semibold">
+                          Chat Session - {session.timestamp.toLocaleDateString()}
+                        </h4>
+                        <span className="text-sm text-muted-foreground">
+                          {session.timestamp.toLocaleTimeString()} • {session.messages.length} messages
+                        </span>
+                      </div>
+                      <div className="bg-muted/30 rounded-lg p-3 max-h-40 overflow-y-auto">
+                        {session.messages.slice(-3).map((msg: any) => (
+                          <div key={msg.id} className="text-sm mb-2 last:mb-0">
+                            <span className={`font-medium ${msg.sender === 'user' ? 'text-primary' : 'text-muted-foreground'}`}>
+                              {msg.sender === 'user' ? 'You' : 'Support'}: 
+                            </span>
+                            <span className="ml-2">{msg.message}</span>
+                          </div>
+                        ))}
+                        {session.messages.length > 3 && (
+                          <p className="text-xs text-muted-foreground mt-2">... and {session.messages.length - 3} more messages</p>
+                        )}
+                      </div>
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        ) : currentView === 'support-tickets' ? (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-2xl">Support Tickets</CardTitle>
+              <CardDescription>
+                View and track your submitted support tickets and their responses
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {supportTickets.length === 0 ? (
+                <div className="text-center text-muted-foreground py-12">
+                  <Headphones className="h-16 w-16 mx-auto mb-4 opacity-30" />
+                  <h3 className="text-lg font-medium mb-2">No Support Tickets</h3>
+                  <p className="text-sm">Submit a query through the chat when you need personalized help.</p>
+                  <Button 
+                    className="mt-4" 
+                    onClick={() => setCurrentView('chat')}
+                  >
+                    Start Support Chat
+                  </Button>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {supportTickets.map((ticket) => (
+                    <Card key={ticket.id} className="p-4">
+                      <div className="flex justify-between items-start mb-3">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-3 mb-2">
+                            <h4 className="font-semibold">Ticket #{ticket.id}</h4>
+                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                              ticket.status === 'pending' 
+                                ? 'bg-yellow-100 text-yellow-800' 
+                                : 'bg-green-100 text-green-800'
+                            }`}>
+                              {ticket.status.charAt(0).toUpperCase() + ticket.status.slice(1)}
+                            </span>
+                          </div>
+                          <p className="text-sm text-muted-foreground mb-2">
+                            Submitted on {ticket.timestamp.toLocaleDateString()} at {ticket.timestamp.toLocaleTimeString()}
+                          </p>
+                        </div>
+                      </div>
+                      
+                      <div className="bg-muted/30 rounded-lg p-3 mb-3">
+                        <p className="text-sm font-medium mb-1">Your Query:</p>
+                        <p className="text-sm">{ticket.query}</p>
+                      </div>
+                      
+                      {ticket.response && (
+                        <div className="bg-primary/10 rounded-lg p-3">
+                          <p className="text-sm font-medium mb-1 text-primary">Support Response:</p>
+                          <p className="text-sm">{ticket.response}</p>
+                        </div>
+                      )}
+                      
+                      {ticket.status === 'pending' && (
+                        <p className="text-xs text-muted-foreground mt-2">
+                          Your ticket is being reviewed. You'll receive a response soon.
+                        </p>
+                      )}
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
         ) : null}
       </div>
     </div>

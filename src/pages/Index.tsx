@@ -79,6 +79,76 @@ const Index = () => {
   const [showQuerySubmission, setShowQuerySubmission] = useState(false);
   const [queryText, setQueryText] = useState("");
   
+  // Order tracking state and mock data
+  const [orderSearchQuery, setOrderSearchQuery] = useState("");
+  const [orders] = useState([
+    {
+      id: "ORD001",
+      customerEmail: "john@example.com",
+      customerPhone: "+1234567890",
+      scooterModel: "EcoRide Pro X1",
+      orderDate: "2024-01-15",
+      status: "delivered",
+      estimatedDelivery: "2024-01-22",
+      actualDelivery: "2024-01-20",
+      trackingNumber: "ES001234567",
+      deliveryAddress: "123 Main St, New York, NY 10001",
+      price: "$1,299"
+    },
+    {
+      id: "ORD002", 
+      customerEmail: "sarah@example.com",
+      customerPhone: "+1234567891",
+      scooterModel: "CityGlide Urban",
+      orderDate: "2024-01-20",
+      status: "in_transit",
+      estimatedDelivery: "2024-01-28",
+      actualDelivery: null,
+      trackingNumber: "ES001234568",
+      deliveryAddress: "456 Oak Ave, Los Angeles, CA 90210",
+      price: "$899"
+    },
+    {
+      id: "ORD003",
+      customerEmail: "mike@example.com", 
+      customerPhone: "+1234567892",
+      scooterModel: "PowerMax Elite",
+      orderDate: "2024-01-25",
+      status: "processing",
+      estimatedDelivery: "2024-02-02",
+      actualDelivery: null,
+      trackingNumber: "ES001234569",
+      deliveryAddress: "789 Pine Rd, Chicago, IL 60601",
+      price: "$1,599"
+    },
+    {
+      id: "ORD004",
+      customerEmail: "lisa@example.com",
+      customerPhone: "+1234567893", 
+      scooterModel: "EcoRide Basic",
+      orderDate: "2024-01-28",
+      status: "shipped",
+      estimatedDelivery: "2024-02-05",
+      actualDelivery: null,
+      trackingNumber: "ES001234570",
+      deliveryAddress: "321 Elm St, Houston, TX 77001",
+      price: "$699"
+    },
+    {
+      id: "ORD005",
+      customerEmail: "alex@example.com",
+      customerPhone: "+1234567894",
+      scooterModel: "SportRide Max",
+      orderDate: "2024-02-01",
+      status: "confirmed",
+      estimatedDelivery: "2024-02-10",
+      actualDelivery: null,
+      trackingNumber: "ES001234571", 
+      deliveryAddress: "654 Maple Dr, Miami, FL 33101",
+      price: "$1,199"
+    }
+  ]);
+  
   // Support tickets state  
   const [supportTickets, setSupportTickets] = useState<Array<{id: string, query: string, status: 'pending' | 'resolved', timestamp: Date, response?: string}>>([
     // Sample data for testing
@@ -973,6 +1043,12 @@ const Index = () => {
   // Customer Dashboard
   const customerFeatures = [
     {
+      title: 'Order Tracking',
+      description: 'Track your scooter delivery status',
+      icon: Package,
+      action: () => setCurrentView('orders'),
+    },
+    {
       title: 'Support Chat',
       description: 'Get instant help with your scooter',
       icon: MessageCircle,
@@ -1091,9 +1167,13 @@ const Index = () => {
                     <MessageCircle className="h-5 w-5" />
                     Start Chat Support
                   </Button>
-                  <Button variant="secondary" className="h-auto py-4 flex-col gap-2">
+                  <Button 
+                    variant="secondary" 
+                    className="h-auto py-4 flex-col gap-2"
+                    onClick={() => setCurrentView('orders')}
+                  >
                     <Package className="h-5 w-5" />
-                    Check Order Status
+                    Track Orders
                   </Button>
                   <Button variant="outline" className="h-auto py-4 flex-col gap-2">
                     <User className="h-5 w-5" />
@@ -1261,6 +1341,139 @@ const Index = () => {
                   </Button>
                 </div>
               </div>
+            </Card>
+          </div>
+        ) : currentView === 'orders' ? (
+          <div>
+            <div className="flex items-center gap-4 mb-6">
+              <Button 
+                variant="ghost" 
+                onClick={() => setCurrentView('dashboard')}
+                className="flex items-center gap-2"
+              >
+                <ArrowLeft className="h-4 w-4" />
+                Back to Dashboard
+              </Button>
+            </div>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-2xl">Order Tracking</CardTitle>
+                <CardDescription>
+                  Search and track your scooter orders by order ID, email, or phone number
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="mb-6">
+                  <Label htmlFor="orderSearch">Search Orders</Label>
+                  <Input
+                    id="orderSearch"
+                    placeholder="Enter order ID, email, or phone number..."
+                    value={orderSearchQuery}
+                    onChange={(e) => setOrderSearchQuery(e.target.value)}
+                    className="mt-2"
+                  />
+                </div>
+
+                <div className="space-y-4">
+                  {orders
+                    .filter(order => 
+                      orderSearchQuery === "" || 
+                      order.id.toLowerCase().includes(orderSearchQuery.toLowerCase()) ||
+                      order.customerEmail.toLowerCase().includes(orderSearchQuery.toLowerCase()) ||
+                      order.customerPhone.includes(orderSearchQuery) ||
+                      order.scooterModel.toLowerCase().includes(orderSearchQuery.toLowerCase())
+                    )
+                    .map(order => (
+                      <Card key={order.id} className="border">
+                        <CardContent className="p-6">
+                          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                            <div className="space-y-2">
+                              <div className="flex items-center gap-2">
+                                <h3 className="font-semibold text-lg">Order {order.id}</h3>
+                                <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                  order.status === 'delivered' ? 'bg-green-100 text-green-800' :
+                                  order.status === 'in_transit' ? 'bg-blue-100 text-blue-800' :
+                                  order.status === 'shipped' ? 'bg-yellow-100 text-yellow-800' :
+                                  order.status === 'processing' ? 'bg-orange-100 text-orange-800' :
+                                  'bg-gray-100 text-gray-800'
+                                }`}>
+                                  {order.status.replace('_', ' ').toUpperCase()}
+                                </span>
+                              </div>
+                              <p className="text-muted-foreground">
+                                <strong>Model:</strong> {order.scooterModel}
+                              </p>
+                              <p className="text-muted-foreground">
+                                <strong>Price:</strong> {order.price}
+                              </p>
+                              <p className="text-muted-foreground">
+                                <strong>Order Date:</strong> {new Date(order.orderDate).toLocaleDateString()}
+                              </p>
+                              <p className="text-muted-foreground">
+                                <strong>Delivery Address:</strong> {order.deliveryAddress}
+                              </p>
+                            </div>
+                            
+                            <div className="space-y-2 text-right">
+                              <p className="text-sm text-muted-foreground">
+                                <strong>Tracking #:</strong> {order.trackingNumber}
+                              </p>
+                              <p className="text-sm text-muted-foreground">
+                                <strong>Estimated Delivery:</strong> {new Date(order.estimatedDelivery).toLocaleDateString()}
+                              </p>
+                              {order.actualDelivery && (
+                                <p className="text-sm text-green-600">
+                                  <strong>Delivered:</strong> {new Date(order.actualDelivery).toLocaleDateString()}
+                                </p>
+                              )}
+                              <div className="flex flex-col gap-2">
+                                <Button 
+                                  variant="outline" 
+                                  size="sm"
+                                  onClick={() => {
+                                    toast({
+                                      title: "Tracking Info",
+                                      description: `Order ${order.id} - Status: ${order.status.replace('_', ' ')}`,
+                                    });
+                                  }}
+                                >
+                                  View Details
+                                </Button>
+                                {order.status !== 'delivered' && (
+                                  <Button 
+                                    variant="outline" 
+                                    size="sm"
+                                    onClick={() => {
+                                      setCurrentMessage(`I need help with my order ${order.id}. Could you please provide an update on the delivery status?`);
+                                      setCurrentView('chat');
+                                    }}
+                                  >
+                                    Contact Support
+                                  </Button>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                </div>
+
+                {orders.filter(order => 
+                  orderSearchQuery === "" || 
+                  order.id.toLowerCase().includes(orderSearchQuery.toLowerCase()) ||
+                  order.customerEmail.toLowerCase().includes(orderSearchQuery.toLowerCase()) ||
+                  order.customerPhone.includes(orderSearchQuery) ||
+                  order.scooterModel.toLowerCase().includes(orderSearchQuery.toLowerCase())
+                ).length === 0 && orderSearchQuery !== "" && (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <Package className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                    <p>No orders found matching your search.</p>
+                    <p className="text-sm mt-2">Try searching with order ID, email, or phone number.</p>
+                  </div>
+                )}
+              </CardContent>
             </Card>
           </div>
         ) : currentView === 'chat-history' ? (
